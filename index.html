@@ -210,16 +210,16 @@
   @media (max-width:700px){
     .grid{grid-template-columns:1fr;}
     .grid.two{grid-template-columns:1fr;}
-    table, thead, tbody, th, td, tr{display:block;}
-    thead{display:none;}
-    tbody tr{
+    #itemsTable, #itemsTable thead, #itemsTable tbody, #itemsTable th, #itemsTable td, #itemsTable tr{display:block;}
+    #itemsTable thead{display:none;}
+    #itemsTable tbody tr{
       border:1px solid var(--line);
       border-radius:6px;
       margin-bottom:10px;
       padding:8px;
     }
-    tbody td{border:none;padding:4px 2px;}
-    tbody td::before{
+    #itemsTable tbody td{border:none;padding:4px 2px;}
+    #itemsTable tbody td::before{
       content:attr(data-label);
       display:block;
       font-size:10px;
