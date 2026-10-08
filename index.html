@@ -90,6 +90,16 @@
     border-color:var(--navy);
     box-shadow:0 0 0 2px rgba(27,42,91,.12);
   }
+  .section-title{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    color:var(--navy);
+    font-weight:700;
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+    margin:4px 0 14px;
+  }
   table{
     width:100%;
     border-collapse:collapse;
@@ -140,36 +150,36 @@
     width:auto;
   }
   .add-row:hover{background:#e2e5f2;}
-  .total-row{
+  .totals-row{
     display:flex;
     justify-content:flex-end;
     align-items:center;
-    gap:10px;
+    gap:28px;
     margin-top:14px;
     padding-top:12px;
     border-top:2px solid var(--navy);
+    flex-wrap:wrap;
   }
-  .total-row span.label{
+  .totals-row .total-block{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .totals-row span.label{
     font-size:12px;
     text-transform:uppercase;
     letter-spacing:.5px;
     color:var(--muted);
     font-weight:600;
   }
-  .total-row span.value{
+  .totals-row span.value{
     font-size:20px;
     font-weight:700;
     color:var(--navy);
   }
-  .section-title{
-    font-size:12px;
-    text-transform:uppercase;
-    letter-spacing:.6px;
-    color:var(--navy);
-    font-weight:700;
-    border-bottom:1px solid var(--line);
-    padding-bottom:6px;
-    margin:4px 0 14px;
+  .totals-row span.value.tn{
+    font-size:17px;
+    color:var(--gold);
   }
   .obs-block{margin:22px 0 4px;}
   .actions{
@@ -228,6 +238,7 @@
       font-weight:600;
       margin-bottom:2px;
     }
+    .totals-row{justify-content:flex-start;gap:18px;}
   }
 
   /* ---- Vista de impresion / PDF ---- */
@@ -259,20 +270,22 @@
   }
   .pdf-fields div span.k{display:block;font-size:9.5px;text-transform:uppercase;color:#888;font-weight:700;}
   .pdf-fields div span.v{font-size:13px;color:#1f2430;}
+  .pdf-section-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#1b2a5b;font-weight:700;border-bottom:1px solid #ddd;padding-bottom:5px;margin:14px 0 10px;}
   table.pdf-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:14px;}
   table.pdf-table th{background:#1b2a5b;color:#fff;padding:6px;text-align:left;font-size:10px;text-transform:uppercase;}
   table.pdf-table td{padding:6px;border-bottom:1px solid #ddd;}
-  .pdf-total{
-    text-align:right;
-    font-size:15px;
-    font-weight:700;
-    color:#1b2a5b;
+  table.pdf-table tfoot td{border-bottom:none;}
+  .pdf-totals{
+    display:flex;
+    justify-content:flex-end;
+    gap:28px;
     border-top:2px solid #1b2a5b;
     padding-top:8px;
   }
+  .pdf-totals .total-main{font-size:15px;font-weight:700;color:#1b2a5b;}
+  .pdf-totals .total-tn{font-size:13px;font-weight:700;color:#8a6a2f;}
   .pdf-obs{margin-top:16px;font-size:12px;}
   .pdf-obs span.k{display:block;font-size:9.5px;text-transform:uppercase;color:#888;font-weight:700;margin-bottom:4px;}
-  .pdf-section-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#1b2a5b;font-weight:700;border-bottom:1px solid #ddd;padding-bottom:5px;margin:14px 0 10px;}
   .pdf-footer{margin-top:24px;font-size:9.5px;color:#999;border-top:1px solid #eee;padding-top:8px;}
 </style>
 </head>
@@ -354,9 +367,15 @@
 
     <button type="button" class="add-row" id="addRow">+ Agregar fila</button>
 
-    <div class="total-row">
-      <span class="label">Total</span>
-      <span class="value" id="totalValue">0</span>
+    <div class="totals-row">
+      <div class="total-block">
+        <span class="label">Total Tns</span>
+        <span class="value tn" id="totalTnValue">0,00</span>
+      </div>
+      <div class="total-block">
+        <span class="label">Total</span>
+        <span class="value" id="totalValue">0</span>
+      </div>
     </div>
 
     <div class="obs-block">
@@ -365,7 +384,7 @@
     </div>
   </div>
 
-  <div class="refs">■ La columna Subtotal se calcula sola (Precio por Tn × Cantidad Tns). El Total suma todos los subtotales.</div>
+  <div class="refs">■ La columna Subtotal se calcula sola (Precio por Tn × Cantidad Tns). El Total suma todos los subtotales y el Total Tns suma todas las toneladas cargadas.</div>
 
   <div class="actions">
     <button type="button" class="secondary" id="resetBtn">Limpiar</button>
@@ -394,7 +413,7 @@
     </thead>
     <tbody id="pdfItemsBody"></tbody>
   </table>
-  <div class="pdf-total" id="pdfTotal"></div>
+  <div class="pdf-totals" id="pdfTotals"></div>
   <div class="pdf-obs" id="pdfObs"></div>
   <div class="pdf-footer" id="pdfFooter"></div>
 </div>
@@ -412,20 +431,25 @@ function calcRow(tr){
   const subtotal = (precio && cant) ? precio * cant : 0;
   tr.querySelector('.subtotal-cell').textContent = subtotal ? numberFmt(subtotal) : '';
   tr.dataset.subtotal = subtotal;
+  tr.dataset.tn = cant;
   calcTotal();
 }
 
 function calcTotal(){
   let total = 0;
+  let totalTn = 0;
   tbody.querySelectorAll('tr').forEach(tr=>{
     total += parseFloat(tr.dataset.subtotal) || 0;
+    totalTn += parseFloat(tr.dataset.tn) || 0;
   });
   document.getElementById('totalValue').textContent = numberFmt(total);
+  document.getElementById('totalTnValue').textContent = numberFmt(totalTn);
 }
 
 function addRow(){
   const tr = document.createElement('tr');
   tr.dataset.subtotal = 0;
+  tr.dataset.tn = 0;
   tr.innerHTML = `
     <td data-label="Producto Vendido"><input type="text" class="producto"></td>
     <td data-label="Lote"><input type="text" class="lote"></td>
@@ -489,6 +513,7 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
 
   let rowsHtml = '';
   let total = 0;
+  let totalTn = 0;
   let hasRows = false;
   tbody.querySelectorAll('tr').forEach(tr=>{
     const producto = tr.querySelector('.producto').value;
@@ -501,6 +526,7 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
     if(!producto && !lote && !envase && !precio && !cantidad && !comision) return;
     hasRows = true;
     total += subtotal;
+    totalTn += parseFloat(cantidad) || 0;
     rowsHtml += `<tr>
       <td>${producto||'—'}</td><td>${lote||'—'}</td><td>${envase||'—'}</td>
       <td>${precio?numberFmt(parseFloat(precio)):'—'}</td>
@@ -510,7 +536,10 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
     </tr>`;
   });
   document.getElementById('pdfItemsBody').innerHTML = hasRows ? rowsHtml : '<tr><td colspan="7">Sin ítems cargados</td></tr>';
-  document.getElementById('pdfTotal').textContent = 'TOTAL: ' + numberFmt(total);
+  document.getElementById('pdfTotals').innerHTML = `
+    <span class="total-tn">TOTAL TNS: ${numberFmt(totalTn)}</span>
+    <span class="total-main">TOTAL: ${numberFmt(total)}</span>
+  `;
   document.getElementById('pdfObs').innerHTML = `<span class="k">Observaciones</span>${obs}`;
   document.getElementById('pdfFooter').textContent = 'Generado el ' + new Date().toLocaleString('es-AR');
 
